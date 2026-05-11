@@ -57,6 +57,19 @@ public class FallbackController {
                 .body(result));
     }
     
+    @GetMapping("/teacher-service")
+    public Mono<ResponseEntity<Map<String, Object>>> teacherServiceFallback() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("code", 503);
+        result.put("message", "教师服务暂时不可用，请稍后重试");
+        result.put("data", null);
+        
+        return Mono.just(ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(result));
+    }
+    
     @GetMapping("/rate-limit")
     public Mono<ResponseEntity<Map<String, Object>>> rateLimitFallback() {
         Map<String, Object> result = new HashMap<>();

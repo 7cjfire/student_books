@@ -28,6 +28,23 @@ spring:
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
         
+        # 教师服务路由
+        - id: teacher-service-route
+          uri: lb://teacher-service
+          predicates:
+            - Path=/api/teacher/**
+          filters:
+            - StripPrefix=1
+            - name: CircuitBreaker
+              args:
+                name: teacherServiceCircuitBreaker
+                fallbackUri: forward:/fallback/teacher-service
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+        
         # 服务提供者路由
         - id: service-provider-route
           uri: lb://service-provider
@@ -63,9 +80,24 @@ resilience4j:
         waitDurationInOpenState: 5s
         failureRateThreshold: 50
         eventConsumerBufferSize: 10
+      teacherServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
   ratelimiter:
     instances:
       bookServiceRateLimiter:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0
+        allowHealthIndicatorToFail: true
+        registerHealthIndicator: true
+        eventConsumerBufferSize: 100
+      teacherServiceRateLimiter:
         limitForPeriod: 10
         limitRefreshPeriod: 1s
         timeoutDuration: 0

@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: teacher-service
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      config:
+        server-addr: localhost:8848
+        file-extension: yaml
+        namespace: online-college
+        group: DEFAULT_GROUP
+        shared-configs:
+          - data-id: common-config.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+          - data-id: datasource-config.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+        extension-configs:
+          - data-id: teacher-service-config.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP

@@ -1,0 +1,102 @@
+# 教师服务专用配置
+server:
+  port: 8084
+  servlet:
+    context-path: /teacher-service
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 10
+    accept-count: 100
+    connection-timeout: 20000
+
+# 服务注册与发现
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
+        cluster-name: DEFAULT
+        weight: 1
+        secure: false
+        metadata:
+          version: 1.0.0
+          author: online-college-team
+        enabled: true
+        register-enabled: true
+        ip: ""
+        port: -1
+        instance-id: ${spring.application.name}:${server.port}
+        service: ${spring.application.name}
+        ephemeral: true
+
+# 教师服务业务配置
+teacher:
+  service:
+    # 分页配置
+    page:
+      default-page-num: 1
+      default-page-size: 10
+      max-page-size: 100
+    # 缓存配置
+    cache:
+      enabled: true
+      ttl: 300 # 5分钟
+    # 文件上传配置
+    upload:
+      max-size: 5MB
+      allowed-extensions: jpg,jpeg,png,pdf,doc,docx
+    # 业务规则
+    rules:
+      min-age: 22
+      max-age: 65
+      default-status: 1 # 1:启用, 0:禁用
+
+# Resilience4j配置
+resilience4j:
+  circuitbreaker:
+    instances:
+      teacherService:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+  ratelimiter:
+    instances:
+      teacherService:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0
+        allowHealthIndicatorToFail: true
+        registerHealthIndicator: true
+        eventConsumerBufferSize: 100
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,ratelimiters,prometheus
+      base-path: /actuator
+      path-mapping:
+        health: healthcheck
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+
+# 日志配置（覆盖通用配置）
+logging:
+  level:
+    com.onlinecollege.teacher: debug
+    org.springframework.web: info
+    org.mybatis: debug
+    com.baomidou.mybatisplus: debug

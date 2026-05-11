@@ -1,0 +1,43 @@
+# 通用配置
+spring:
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+  
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+# 日志配置
+logging:
+  level:
+    root: info
+    com.onlinecollege: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 30
+
+# 跨域配置
+cors:
+  allowed-origins: "*"
+  allowed-methods: "*"
+  allowed-headers: "*"
+  allow-credentials: true
+  max-age: 3600
+
+# 统一响应配置
+response:
+  success-code: 200
+  success-message: "操作成功"
+  error-code: 500
+  error-message: "系统内部错误"
