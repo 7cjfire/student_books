@@ -123,6 +123,18 @@ spring:
                 redis-rate-limiter.burstCapacity: 40
                 key-resolver: "#{@userKeyResolver}"
 
+        # 认证服务路由（登录 / 当前用户 / 登出）
+        - id: auth-service-route
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - RewritePath=/api/auth/(?<segment>.*), /auth-service/auth/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: authServiceCircuitBreaker
+                fallbackUri: forward:/fallback/auth-service
+
         # 服务提供者路由
         - id: service-provider-route
           uri: lb://service-provider
@@ -198,6 +210,14 @@ resilience4j:
         waitDurationInOpenState: 5s
         failureRateThreshold: 50
         eventConsumerBufferSize: 10
+      authServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
   ratelimiter:
     instances:
       bookServiceRateLimiter:
@@ -221,6 +241,11 @@ resilience4j:
         allowHealthIndicatorToFail: true
         registerHealthIndicator: true
         eventConsumerBufferSize: 100
+
+# JWT 校验配置：secret 必须与 auth-service 一致，生产环境用 JWT_SECRET 环境变量覆盖
+jwt:
+  secret: ${JWT_SECRET:online-college-super-secret-key-please-change-in-prod-2026}
+  issuer: online-college
 
 management:
   endpoints:

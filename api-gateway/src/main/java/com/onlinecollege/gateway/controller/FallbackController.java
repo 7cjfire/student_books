@@ -60,6 +60,12 @@ public class FallbackController {
         return serviceUnavailable("首页服务暂时不可用，请稍后重试");
     }
 
+    @RequestMapping(value = "/auth-service",
+            method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
+    public Mono<ResponseEntity<Map<String, Object>>> authServiceFallback() {
+        return serviceUnavailable("认证服务暂时不可用，请稍后重试");
+    }
+
     @RequestMapping(value = "/service-provider",
             method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
     public Mono<ResponseEntity<Map<String, Object>>> serviceProviderFallback() {
