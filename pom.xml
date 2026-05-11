@@ -13,6 +13,7 @@
     <description>在线学院微服务父工程</description>
 
     <modules>
+        <module>book-service</module>
         <module>eureka-server</module>
         <module>service-provider</module>
         <module>service-consumer</module>
