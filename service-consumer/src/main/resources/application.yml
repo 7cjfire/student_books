@@ -1,0 +1,28 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: service-consumer
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    instance-id: ${spring.application.name}:${server.port}
+    prefer-ip-address: true
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: basic
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
