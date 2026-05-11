@@ -1,0 +1,71 @@
+# 课程分类服务专用配置
+server:
+  port: 8085
+  servlet:
+    context-path: /subject-service
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 10
+    accept-count: 100
+    connection-timeout: 20000
+
+# 服务注册与发现
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
+        cluster-name: DEFAULT
+        weight: 1
+        metadata:
+          version: 1.0.0
+          author: online-college-team
+        enabled: true
+        register-enabled: true
+        instance-id: ${spring.application.name}:${server.port}
+        service: ${spring.application.name}
+        ephemeral: true
+
+# 课程分类业务配置
+subject:
+  service:
+    page:
+      default-page-num: 1
+      default-page-size: 10
+      max-page-size: 100
+    import:
+      # Excel 批量导入相关
+      batch-size: 500
+      # 默认根分类 parent_id
+      root-parent-id: 0
+
+# Resilience4j 熔断限流
+resilience4j:
+  circuitbreaker:
+    instances:
+      subjectService:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+  ratelimiter:
+    instances:
+      subjectService:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0
+        registerHealthIndicator: true
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,ratelimiters,prometheus
+  endpoint:
+    health:
+      show-details: always
