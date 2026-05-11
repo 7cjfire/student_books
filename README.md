@@ -19,7 +19,8 @@
 - **MyBatis-Plus**: 3.5.7
 
 ### 微服务组件
-- **服务注册与发现**: Eureka Server
+- **服务注册与发现**: Eureka Server / Nacos
+- **配置中心**: Nacos Config
 - **API网关**: Spring Cloud Gateway
 - **限流熔断**: Resilience4j
 - **服务调用**: OpenFeign + LoadBalancer
@@ -46,9 +47,18 @@ online-college-parent/                    # 父工程 (Maven聚合项目)
 │   ├── MyBatis-Plus数据访问
 │   ├── Swagger API文档
 │   └── 统一异常处理
+├── teacher-service/                     # 教师管理服务 (端口: 8084)
+│   ├── 教师CRUD操作
+│   ├── Nacos配置中心集成
+│   ├── MyBatis-Plus数据访问
+│   └── 统一异常处理
 ├── eureka-server/                      # 服务注册中心 (端口: 8761)
 ├── service-provider/                    # 服务提供者示例 (端口: 8082)
-└── service-consumer/                    # 服务消费者示例 (端口: 8083)
+├── service-consumer/                    # 服务消费者示例 (端口: 8083)
+└── nacos-config/                       # Nacos配置文件
+    ├── common-config.yaml              # 通用配置
+    ├── datasource-config.yaml          # 数据源配置
+    └── teacher-service-config.yaml     # 教师服务专用配置
 ```
 
 ## 环境要求
@@ -80,6 +90,26 @@ CREATE TABLE book (
 );
 ```
 
+3. 创建教师表：
+```sql
+CREATE TABLE teacher (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    teacher_name VARCHAR(50) NOT NULL,
+    teacher_no VARCHAR(20) NOT NULL UNIQUE,
+    gender VARCHAR(10),
+    age INT,
+    title VARCHAR(50),
+    department VARCHAR(100),
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    hire_date DATE,
+    salary DECIMAL(10,2),
+    status INT DEFAULT 1,
+    create_time DATE,
+    update_time DATE
+);
+```
+
 ## 启动步骤
 
 ### 1. 克隆项目
@@ -98,7 +128,23 @@ spring:
     password: 123456
 ```
 
-### 3. 启动服务（按顺序）
+### 3. 启动Nacos（可选）
+```bash
+# 下载Nacos: https://github.com/alibaba/nacos/releases
+# 解压后进入bin目录
+cd nacos/bin
+
+# Windows启动单机模式
+startup.cmd -m standalone
+
+# Linux/Mac启动单机模式
+sh startup.sh -m standalone
+
+# 访问Nacos控制台: http://localhost:8848
+# 用户名/密码: nacos/nacos
+```
+
+### 4. 启动服务（按顺序）
 
 #### 方式一：使用IDE启动
 1. **启动Eureka Server** (`eureka-server`)
@@ -109,14 +155,19 @@ spring:
    - 端口: 8081
    - Swagger文档: http://localhost:8081/book-service/swagger-ui.html
 
-3. **启动API Gateway** (`api-gateway`)
+3. **启动Teacher Service** (`teacher-service`)
+   - 端口: 8084
+   - Nacos配置: 从Nacos获取配置
+   - Swagger文档: http://localhost:8084/teacher-service/swagger-ui.html
+
+4. **启动API Gateway** (`api-gateway`)
    - 端口: 8080
    - 网关入口: http://localhost:8080
 
-4. **启动Service Provider** (`service-provider`) - 可选
+5. **启动Service Provider** (`service-provider`) - 可选
    - 端口: 8082
 
-5. **启动Service Consumer** (`service-consumer`) - 可选
+6. **启动Service Consumer** (`service-consumer`) - 可选
    - 端口: 8083
 
 #### 方式二：使用Maven命令启动
@@ -126,6 +177,9 @@ cd eureka-server
 mvn spring-boot:run
 
 cd ../book-service
+mvn spring-boot:run
+
+cd ../teacher-service
 mvn spring-boot:run
 
 cd ../api-gateway
@@ -165,6 +219,44 @@ curl -X GET "http://localhost:8080/api/books/1" \
 #### 条件查询图书列表
 ```bash
 curl -X GET "http://localhost:8080/api/books/list?bookName=Java&author=Bruce" \
+  -H "token: admin123"
+```
+
+### 2. 教师管理服务API
+
+#### 新增教师
+```bash
+curl -X POST "http://localhost:8080/api/teacher/add" \
+  -H "Content-Type: application/json" \
+  -H "token: admin123" \
+  -d '{
+    "teacherName": "张三",
+    "teacherNo": "T2023001",
+    "gender": "男",
+    "age": 35,
+    "title": "教授",
+    "department": "计算机学院",
+    "phone": "13800138000",
+    "email": "zhangsan@example.com",
+    "salary": 15000.00
+  }'
+```
+
+#### 分页查询教师列表
+```bash
+curl -X GET "http://localhost:8080/api/teacher/list?pageNum=1&pageSize=10" \
+  -H "token: admin123"
+```
+
+#### 根据ID删除教师
+```bash
+curl -X DELETE "http://localhost:8080/api/teacher/delete/1" \
+  -H "token: admin123"
+```
+
+#### 条件查询教师
+```bash
+curl -X GET "http://localhost:8080/api/teacher/search?teacherName=张&department=计算机学院" \
   -H "token: admin123"
 ```
 
@@ -220,9 +312,17 @@ curl -X GET "http://localhost:8081/book-service/api/books/page?pageNum=1&pageSiz
 - **统一异常处理**: 参数校验、业务异常统一处理
 - **Swagger文档**: 自动生成的API文档
 
-### 3. 微服务架构
-- **服务注册发现**: 通过Eureka实现服务注册与发现
-- **配置管理**: 统一的配置管理（预留Nacos配置）
+### 3. 教师管理服务
+- **教师CRUD操作**: 新增、删除、修改、查询
+- **Nacos配置中心**: 从Nacos获取数据库连接等配置
+- **分页查询**: 支持分页参数pageNum和pageSize
+- **条件查询**: 支持按姓名模糊查询、按院系精确查询
+- **统一异常处理**: 参数校验、业务异常统一处理
+- **Swagger文档**: 自动生成的API文档
+
+### 4. 微服务架构
+- **服务注册发现**: 通过Eureka/Nacos实现服务注册与发现
+- **配置管理**: 通过Nacos Config实现统一配置管理
 - **服务调用**: 服务间通过OpenFeign调用
 - **监控告警**: 通过Actuator暴露监控指标
 
@@ -318,8 +418,9 @@ spring:
 - [x] 实现Eureka服务注册中心
 - [x] 实现API网关（含鉴权、限流、熔断）
 - [x] 实现服务提供者和消费者示例
+- [x] 实现教师管理微服务
+- [x] 集成Nacos配置中心
 - [x] 编写完整的使用文档
-- [ ] 集成Nacos配置中心
 - [ ] 集成阿里云OSS和VOD
 - [ ] 添加用户管理服务
 - [ ] 添加课程管理服务
