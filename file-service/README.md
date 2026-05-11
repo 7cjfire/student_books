@@ -56,6 +56,32 @@ curl -F "file=@avatar.png" http://localhost:8086/file-service/upload/avatar
 curl -F "file=@subjects.xlsx" http://localhost:8086/file-service/upload/course-catalog
 ```
 
+## 阿里云 VOD 视频点播
+
+获取上传凭证 / 刷新凭证 / 播放凭证的 REST 接口（所有调用都是 OpenAPI，不走后端中转视频流）：
+
+| 接口 | 说明 |
+|---|---|
+| `POST /vod/upload-auth` | 申请新视频上传凭证（返回 `videoId / uploadAddress / uploadAuth`） |
+| `POST /vod/upload-auth/refresh` | 上传凭证过期（> 3000 秒）后刷新 |
+| `GET /vod/play-auth/{videoId}` | 获取播放凭证供前端播放器使用 |
+
+前端拿到 `uploadAddress + uploadAuth` 后使用阿里云 Web 端上传 SDK 直传视频，后端只负责发凭证和保存 `videoId`。
+
+### 配置
+
+```bash
+export VOD_ENABLED=true
+export VOD_REGION_ID=cn-shanghai
+export VOD_ACCESS_KEY_ID=LTAI...
+export VOD_ACCESS_KEY_SECRET=xxxx
+# 可选
+export VOD_PLAY_AUTH_TIMEOUT=3000
+export VOD_DEFAULT_CATE_ID=0
+```
+
+`vod.enabled=false` 时，VOD 相关接口会直接返回 503 + 提示，不会让应用启动失败。
+
 ## 与 subject-service 的关系
 
 为保持演示简单，本服务直接连 `online_college.edu_subject` 表写数据，Entity 与 subject-service 共享一张表。

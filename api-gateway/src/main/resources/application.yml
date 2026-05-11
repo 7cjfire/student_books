@@ -62,7 +62,7 @@ spring:
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
 
-        # 文件服务路由（头像/Excel 上传）
+        # 文件服务路由（头像/Excel 上传 + VOD 凭证）
         - id: file-service-route
           uri: lb://file-service
           predicates:
@@ -74,6 +74,54 @@ spring:
                 name: fileServiceCircuitBreaker
                 fallbackUri: forward:/fallback/file-service
             # 注意：文件上传走的是 multipart，这里不挂 RequestRateLimiter 避免对大文件做 body 限速
+
+        # VOD 凭证路由（走 file-service）
+        - id: file-service-vod-route
+          uri: lb://file-service
+          predicates:
+            - Path=/api/vod/**
+          filters:
+            - StripPrefix=1
+            - name: CircuitBreaker
+              args:
+                name: fileServiceCircuitBreaker
+                fallbackUri: forward:/fallback/file-service
+
+        # 课程服务路由
+        - id: course-service-route
+          uri: lb://course-service
+          predicates:
+            - Path=/api/course/**
+          filters:
+            # 将 /api/course/<path> 重写为 /course-service/<path>，
+            # 保留下游 spring.servlet.context-path 前缀
+            - RewritePath=/api/course/(?<segment>.*), /course-service/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: courseServiceCircuitBreaker
+                fallbackUri: forward:/fallback/course-service
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+
+        # 首页服务路由（banner + 首页聚合）
+        - id: index-service-route
+          uri: lb://index-service
+          predicates:
+            - Path=/api/index/**
+          filters:
+            - RewritePath=/api/index/(?<segment>.*), /index-service/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: indexServiceCircuitBreaker
+                fallbackUri: forward:/fallback/index-service
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@userKeyResolver}"
 
         # 服务提供者路由
         - id: service-provider-route
@@ -132,6 +180,22 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 3
         automaticTransitionFromOpenToHalfOpenEnabled: true
         waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      courseServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      indexServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
         failureRateThreshold: 50
         eventConsumerBufferSize: 10
   ratelimiter:

@@ -43,6 +43,15 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/subjects/first-level",
             "/api/subjects/children/",
             "/api/subjects/path/",
+            // course-service 公开（C 端查看已发布课程列表 + 详情 + 播放凭证）
+            //   注意：/api/course/courses/{id} 是 GET 详情（公开），写接口(POST/PUT/DELETE)
+            //   也会命中这个前缀——当前实现按前缀匹配，不按 HTTP 方法过滤。
+            //   真实生产项目请按 (method+path) 两维度过滤。
+            "/api/course/courses/page",
+            "/api/course/courses/videos/",
+            // index-service 公开（C 端首页 + 生效 banner 列表）
+            "/api/index/home",
+            "/api/index/banners/active",
             // 熔断降级 & 健康检查
             "/fallback/",
             "/actuator/"

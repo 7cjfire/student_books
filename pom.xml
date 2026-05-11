@@ -21,6 +21,8 @@
         <module>teacher-service</module>
         <module>subject-service</module>
         <module>file-service</module>
+        <module>course-service</module>
+        <module>index-service</module>
     </modules>
 
     <properties>
