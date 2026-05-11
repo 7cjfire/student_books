@@ -48,6 +48,18 @@ public class FallbackController {
         return serviceUnavailable("文件服务暂时不可用，请稍后重试");
     }
 
+    @RequestMapping(value = "/course-service",
+            method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
+    public Mono<ResponseEntity<Map<String, Object>>> courseServiceFallback() {
+        return serviceUnavailable("课程服务暂时不可用，请稍后重试");
+    }
+
+    @RequestMapping(value = "/index-service",
+            method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
+    public Mono<ResponseEntity<Map<String, Object>>> indexServiceFallback() {
+        return serviceUnavailable("首页服务暂时不可用，请稍后重试");
+    }
+
     @RequestMapping(value = "/service-provider",
             method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
     public Mono<ResponseEntity<Map<String, Object>>> serviceProviderFallback() {
