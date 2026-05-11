@@ -27,7 +27,7 @@ spring:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
-        
+
         # 教师服务路由
         - id: teacher-service-route
           uri: lb://teacher-service
@@ -44,7 +44,37 @@ spring:
                 redis-rate-limiter.replenishRate: 10
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@userKeyResolver}"
-        
+
+        # 课程分类服务路由
+        - id: subject-service-route
+          uri: lb://subject-service
+          predicates:
+            - Path=/api/subjects/**
+          filters:
+            - StripPrefix=1
+            - name: CircuitBreaker
+              args:
+                name: subjectServiceCircuitBreaker
+                fallbackUri: forward:/fallback/subject-service
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+
+        # 文件服务路由（头像/Excel 上传）
+        - id: file-service-route
+          uri: lb://file-service
+          predicates:
+            - Path=/api/upload/**
+          filters:
+            - StripPrefix=1
+            - name: CircuitBreaker
+              args:
+                name: fileServiceCircuitBreaker
+                fallbackUri: forward:/fallback/file-service
+            # 注意：文件上传走的是 multipart，这里不挂 RequestRateLimiter 避免对大文件做 body 限速
+
         # 服务提供者路由
         - id: service-provider-route
           uri: lb://service-provider
@@ -52,7 +82,7 @@ spring:
             - Path=/provider/**
           filters:
             - StripPrefix=1
-        
+
         # 服务消费者路由
         - id: service-consumer-route
           uri: lb://service-consumer
@@ -88,6 +118,22 @@ resilience4j:
         waitDurationInOpenState: 5s
         failureRateThreshold: 50
         eventConsumerBufferSize: 10
+      subjectServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      fileServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
   ratelimiter:
     instances:
       bookServiceRateLimiter:
@@ -104,12 +150,20 @@ resilience4j:
         allowHealthIndicatorToFail: true
         registerHealthIndicator: true
         eventConsumerBufferSize: 100
+      subjectServiceRateLimiter:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0
+        allowHealthIndicatorToFail: true
+        registerHealthIndicator: true
+        eventConsumerBufferSize: 100
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,circuitbreakers,ratelimiters,gatway
+        # 修正原先的拼写错误 gatway -> gateway
+        include: health,info,metrics,circuitbreakers,ratelimiters,gateway
   endpoint:
     health:
       show-details: always

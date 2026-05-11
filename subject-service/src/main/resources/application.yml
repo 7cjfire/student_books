@@ -1,0 +1,16 @@
+# 本地兜底配置（仅当 Nacos 不可用时生效）；
+# 正常启动时端口、数据源、MyBatis-Plus 等由 Nacos 中的
+# subject-service-config.yaml / datasource-config.yaml 覆盖。
+server:
+  port: 8085
+  servlet:
+    context-path: /subject-service
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  packages-to-scan: com.onlinecollege.subject.controller
