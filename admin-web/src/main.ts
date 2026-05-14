@@ -4,12 +4,18 @@ import piniaPersistedState from 'pinia-plugin-persistedstate'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
 import './styles/global.scss'
 
 const app = createApp(App)
+
+// 全局注册所有 Element Plus 图标（侧边栏菜单 <component :is="icon"> 需要）
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component)
+}
 
 const pinia = createPinia()
 pinia.use(piniaPersistedState)

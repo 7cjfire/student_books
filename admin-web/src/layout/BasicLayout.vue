@@ -14,7 +14,7 @@
         active-text-color="#fff"
       >
         <template v-for="r in menuItems" :key="r.path">
-          <el-menu-item :index="'/' + r.path">
+          <el-menu-item :index="r.path">
             <el-icon><component :is="r.meta?.icon" /></el-icon>
             <template #title>{{ r.meta?.title }}</template>
           </el-menu-item>
