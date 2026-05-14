@@ -1,9 +1,20 @@
 server:
-  port: 8080
+  port: 9091
 
 spring:
   application:
     name: api-gateway
+  redis:
+    host: localhost
+    port: 6379
+    # password: 你的密码 # 如果本地 Redis 没设密码，这行注释掉即可
+    # database: 0
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
   cloud:
     gateway:
       discovery:
@@ -22,11 +33,11 @@ spring:
               args:
                 name: bookServiceCircuitBreaker
                 fallbackUri: forward:/fallback/book-service
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@userKeyResolver}"
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 10
+#                redis-rate-limiter.burstCapacity: 20
+#                key-resolver: "#{@userKeyResolver}"
 
         # 教师服务路由
         - id: teacher-service-route
@@ -39,11 +50,11 @@ spring:
               args:
                 name: teacherServiceCircuitBreaker
                 fallbackUri: forward:/fallback/teacher-service
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@userKeyResolver}"
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 10
+#                redis-rate-limiter.burstCapacity: 20
+#                key-resolver: "#{@userKeyResolver}"
 
         # 课程分类服务路由
         - id: subject-service-route
@@ -56,11 +67,11 @@ spring:
               args:
                 name: subjectServiceCircuitBreaker
                 fallbackUri: forward:/fallback/subject-service
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@userKeyResolver}"
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 10
+#                redis-rate-limiter.burstCapacity: 20
+#                key-resolver: "#{@userKeyResolver}"
 
         # 文件服务路由（头像/Excel 上传 + VOD 凭证）
         - id: file-service-route
@@ -100,11 +111,11 @@ spring:
               args:
                 name: courseServiceCircuitBreaker
                 fallbackUri: forward:/fallback/course-service
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@userKeyResolver}"
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 10
+#                redis-rate-limiter.burstCapacity: 20
+#                key-resolver: "#{@userKeyResolver}"
 
         # 首页服务路由（banner + 首页聚合）
         - id: index-service-route
@@ -117,11 +128,11 @@ spring:
               args:
                 name: indexServiceCircuitBreaker
                 fallbackUri: forward:/fallback/index-service
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 20
-                redis-rate-limiter.burstCapacity: 40
-                key-resolver: "#{@userKeyResolver}"
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 20
+#                redis-rate-limiter.burstCapacity: 40
+#                key-resolver: "#{@userKeyResolver}"
 
         # 认证服务路由（登录 / 当前用户 / 登出）
         - id: auth-service-route

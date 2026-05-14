@@ -1,11 +1,55 @@
-# 本地兜底配置（仅当 Nacos 不可用时生效）；
-# 正常启动时端口、数据源、MyBatis-Plus 等由 Nacos 中的
-# subject-service-config.yaml / datasource-config.yaml 覆盖。
+# ===================================================================
+# 基础环境配置
+# ===================================================================
+spring:
+  application:
+    name: subject-service
+  profiles:
+    active: dev
+
+  # 关键配置：从 Spring Boot 2.4+ 开始，必须显式导入 Nacos 配置
+  config:
+    import:
+      - optional:nacos:subject-service-config.yaml  # 显式引入主配置
+      - optional:nacos:datasource-config.yaml       # 引入数据源配置
+      - optional:nacos:common-config.yaml           # 引入公共配置
+
+  # ===================================================================
+  # Nacos 核心配置（连接 Nacos 服务器的最小化信息）
+  # ===================================================================
+  cloud:
+    nacos:
+      # 服务发现（注册中心）
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
+      # 配置中心
+      config:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        # 共享配置（如果你在 import 里写了，这里可以作为补充或定义自动刷新）
+        shared-configs:
+          - data-id: common-config.yaml
+            refresh: true
+          - data-id: datasource-config.yaml
+            refresh: true
+        # 扩展配置
+        extension-configs:
+          - data-id: subject-service-config.yaml
+            refresh: true
+
+# ===================================================================
+# 本地兜底配置（仅当 Nacos 不可用或 Nacos 中未定义对应属性时生效）
+# ===================================================================
 server:
   port: 8085
   servlet:
     context-path: /subject-service
 
+# SpringDoc / Swagger 配置
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -14,3 +58,11 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
   packages-to-scan: com.onlinecollege.subject.controller
+
+# ===================================================================
+# 日志配置（可选，方便本地调试看到 Nacos 加载情况）
+# ===================================================================
+logging:
+  level:
+    com.alibaba.nacos: WARN
+    com.onlinecollege: DEBUG

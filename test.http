@@ -1,0 +1,17 @@
+POST http://localhost:8080/api/teacher/add
+Content-Type: application/json
+
+{
+  "id": 3,
+  "teacherName": "张4",
+  "teacherNo": "T2023001",
+  "gender": "男",
+  "age": 35,
+  "title": "教授",
+  "department": "计算机学院",
+  "phone": "13800138000",
+  "email": "zhangsan@example.com",
+  "hireDate": "2023-01-01",
+  "salary": 15000,
+  "status": 1
+}

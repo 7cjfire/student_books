@@ -182,6 +182,6 @@ public class VodService {
         private String playAuth;
         private String title;
         private String coverURL;
-        private Integer duration;
+        private Float duration;
     }
 }

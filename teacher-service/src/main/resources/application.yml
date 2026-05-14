@@ -1,17 +1,56 @@
-# 本地兜底配置（仅当 Nacos 不可用时生效）。
-# 正常启动时以下内容全部由 Nacos 中的以下配置文件提供：
-#   - common-config.yaml           (Jackson/日志/CORS/multipart 等)
-#   - datasource-config.yaml       (数据源 + MyBatis-Plus 全局)
-#   - teacher-service-config.yaml  (端口/Nacos discovery/业务规则/Resilience4j/Actuator/...)
-#
-# 这里只保留"在开发机上没连 Nacos 时也能启动到主框架"的最小兜底，
-# 以及方便本地调试的日志级别。避免与 Nacos 重复导致字段含义不一致。
+# ===================================================================
+# 基础环境配置
+# ===================================================================
+spring:
+  application:
+    name: teacher-service
+  profiles:
+    active: dev
 
+  # 关键配置：从 Spring Boot 2.4+ 开始，必须显式导入 Nacos 配置
+  config:
+    import:
+      - optional:nacos:teacher-service-config.yaml  # 显式引入主配置
+      - optional:nacos:datasource-config.yaml       # 引入数据源配置
+      - optional:nacos:common-config.yaml           # 引入公共配置
+
+  # ===================================================================
+  # Nacos 核心配置（连接 Nacos 服务器的最小化信息）
+  # ===================================================================
+  cloud:
+    nacos:
+      # 服务发现（注册中心）
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
+      # 配置中心
+      config:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        # 共享配置（在 import 里写了，这里作为补充定义自动刷新）
+        shared-configs:
+          - data-id: common-config.yaml
+            refresh: true
+          - data-id: datasource-config.yaml
+            refresh: true
+        # 扩展配置
+        extension-configs:
+          - data-id: teacher-service-config.yaml
+            refresh: true
+
+# ===================================================================
+# 本地兜底配置（仅当 Nacos 不可用或 Nacos 中未定义对应属性时生效）
+# 正常启动时以下内容全部由 Nacos 中的配置文件覆盖
+# ===================================================================
 server:
   port: 8084
   servlet:
     context-path: /teacher-service
 
+# SpringDoc / Swagger 配置
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -20,7 +59,9 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
 
+# 日志配置
 logging:
   level:
     com.onlinecollege.teacher: debug
     org.springframework.web: info
+    com.alibaba.nacos: WARN # 减少 Nacos 底层刷屏日志，方便本地调试
