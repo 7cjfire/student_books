@@ -177,7 +177,8 @@ mvn -pl api-gateway        spring-boot:run
 
 ## 网关路由表
 
-经网关访问都走 `http://localhost:8080/**`，StripPrefix=1 会去掉 `/api`（文件服务去掉 `/api` 后到 `/upload/...`）。
+经网关访问都走 `http://localhost:8080/**`，网关用 `RewritePath` 把 `/api/**`
+重写为下游 `<context-path>/<controller-path>/**`（**不要用 `StripPrefix`，会丢失下游 context-path**）。
 
 | 外部路径 | 转发到 | 对应直连 |
 |---|---|---|

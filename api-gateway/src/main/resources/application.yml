@@ -22,13 +22,17 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
+        # 路由统一规则：用 RewritePath 重写 /api/xxx 到下游服务的 "context-path + Controller@RequestMapping"，
+        # 不能用 StripPrefix=1，因为下游每个服务都有 server.servlet.context-path（如 /book-service）。
+
         # 图书服务路由
+        # 外部 /api/books/page  -> book-service 实例 /book-service/api/books/page
         - id: book-service-route
           uri: lb://book-service
           predicates:
             - Path=/api/books/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/api/books/?(?<segment>.*), /book-service/api/books/$\{segment}
             - name: CircuitBreaker
               args:
                 name: bookServiceCircuitBreaker
@@ -40,12 +44,13 @@ spring:
 #                key-resolver: "#{@userKeyResolver}"
 
         # 教师服务路由
+        # 外部 /api/teacher/add -> teacher-service 实例 /teacher-service/teacher/add
         - id: teacher-service-route
           uri: lb://teacher-service
           predicates:
             - Path=/api/teacher/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/api/teacher/?(?<segment>.*), /teacher-service/teacher/$\{segment}
             - name: CircuitBreaker
               args:
                 name: teacherServiceCircuitBreaker
@@ -57,12 +62,13 @@ spring:
 #                key-resolver: "#{@userKeyResolver}"
 
         # 课程分类服务路由
+        # 外部 /api/subjects/tree -> subject-service 实例 /subject-service/api/subjects/tree
         - id: subject-service-route
           uri: lb://subject-service
           predicates:
             - Path=/api/subjects/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/api/subjects/?(?<segment>.*), /subject-service/api/subjects/$\{segment}
             - name: CircuitBreaker
               args:
                 name: subjectServiceCircuitBreaker
@@ -73,13 +79,14 @@ spring:
 #                redis-rate-limiter.burstCapacity: 20
 #                key-resolver: "#{@userKeyResolver}"
 
-        # 文件服务路由（头像/Excel 上传 + VOD 凭证）
+        # 文件服务路由（头像/Excel 上传）
+        # 外部 /api/upload/avatar -> file-service 实例 /file-service/upload/avatar
         - id: file-service-route
           uri: lb://file-service
           predicates:
             - Path=/api/upload/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/api/upload/?(?<segment>.*), /file-service/upload/$\{segment}
             - name: CircuitBreaker
               args:
                 name: fileServiceCircuitBreaker
@@ -87,26 +94,26 @@ spring:
             # 注意：文件上传走的是 multipart，这里不挂 RequestRateLimiter 避免对大文件做 body 限速
 
         # VOD 凭证路由（走 file-service）
+        # 外部 /api/vod/upload-auth -> file-service 实例 /file-service/vod/upload-auth
         - id: file-service-vod-route
           uri: lb://file-service
           predicates:
             - Path=/api/vod/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/api/vod/?(?<segment>.*), /file-service/vod/$\{segment}
             - name: CircuitBreaker
               args:
                 name: fileServiceCircuitBreaker
                 fallbackUri: forward:/fallback/file-service
 
         # 课程服务路由
+        # 外部 /api/course/courses/page -> course-service 实例 /course-service/courses/page
         - id: course-service-route
           uri: lb://course-service
           predicates:
             - Path=/api/course/**
           filters:
-            # 将 /api/course/<path> 重写为 /course-service/<path>，
-            # 保留下游 spring.servlet.context-path 前缀
-            - RewritePath=/api/course/(?<segment>.*), /course-service/$\{segment}
+            - RewritePath=/api/course/?(?<segment>.*), /course-service/$\{segment}
             - name: CircuitBreaker
               args:
                 name: courseServiceCircuitBreaker
@@ -118,12 +125,13 @@ spring:
 #                key-resolver: "#{@userKeyResolver}"
 
         # 首页服务路由（banner + 首页聚合）
+        # 外部 /api/index/home -> index-service 实例 /index-service/home
         - id: index-service-route
           uri: lb://index-service
           predicates:
             - Path=/api/index/**
           filters:
-            - RewritePath=/api/index/(?<segment>.*), /index-service/$\{segment}
+            - RewritePath=/api/index/?(?<segment>.*), /index-service/$\{segment}
             - name: CircuitBreaker
               args:
                 name: indexServiceCircuitBreaker
@@ -134,13 +142,14 @@ spring:
 #                redis-rate-limiter.burstCapacity: 40
 #                key-resolver: "#{@userKeyResolver}"
 
-        # 认证服务路由（登录 / 当前用户 / 登出）
+        # 认证服务路由（登录 / 当前用户 / 登出 / ping）
+        # 外部 /api/auth/login -> auth-service 实例 /auth-service/auth/login
         - id: auth-service-route
           uri: lb://auth-service
           predicates:
             - Path=/api/auth/**
           filters:
-            - RewritePath=/api/auth/(?<segment>.*), /auth-service/auth/$\{segment}
+            - RewritePath=/api/auth/?(?<segment>.*), /auth-service/auth/$\{segment}
             - name: CircuitBreaker
               args:
                 name: authServiceCircuitBreaker
