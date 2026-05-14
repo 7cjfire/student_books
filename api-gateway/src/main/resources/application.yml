@@ -1,20 +1,13 @@
 server:
-  port: 9091
+  port: 8080
 
 spring:
   application:
     name: api-gateway
-  redis:
-    host: localhost
-    port: 6379
-    # password: 你的密码 # 如果本地 Redis 没设密码，这行注释掉即可
-    # database: 0
-    lettuce:
-      pool:
-        max-active: 8
-        max-wait: -1ms
-        max-idle: 8
-        min-idle: 0
+  # 注意：如果以后启用 RequestRateLimiter（基于 Redis），需要在这里加上：
+  # redis:
+  #   host: localhost
+  #   port: 6379
   cloud:
     gateway:
       discovery:
