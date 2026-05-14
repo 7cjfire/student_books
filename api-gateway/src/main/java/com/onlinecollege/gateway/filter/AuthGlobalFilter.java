@@ -45,9 +45,10 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
     /** 白名单路径前缀（任一前缀匹配即放行） */
     private static final List<String> WHITE_LIST_PREFIXES = List.of(
-            // 登录 / 登出
+            // 登录 / 登出 / 健康检查
             "/api/auth/login",
             "/api/auth/logout",
+            "/api/auth/ping",
             // book-service 公开查询
             "/api/books/page",
             "/api/books/list",

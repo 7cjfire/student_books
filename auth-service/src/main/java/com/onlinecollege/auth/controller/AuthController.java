@@ -30,6 +30,16 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @GetMapping("/ping")
+    @Operation(summary = "健康检查 / 网关连通性自检", description = "无需鉴权，用于 Postman 验证 /api/auth/ping 是否能转发到本服务")
+    public Result<PingVo> ping() {
+        PingVo vo = new PingVo();
+        vo.setService("auth-service");
+        vo.setStatus("UP");
+        vo.setTime(java.time.LocalDateTime.now().toString());
+        return Result.success(vo);
+    }
+
     @PostMapping("/login")
     @Operation(summary = "登录")
     public Result<LoginResult> login(@Valid @RequestBody LoginRequest req) {
@@ -65,5 +75,12 @@ public class AuthController {
         private String username;
         @NotBlank(message = "密码不能为空")
         private String password;
+    }
+
+    @Data
+    public static class PingVo {
+        private String service;
+        private String status;
+        private String time;
     }
 }
