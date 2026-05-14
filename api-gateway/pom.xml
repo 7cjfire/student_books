@@ -26,10 +26,16 @@
             <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
 
-        <!-- Eureka Client -->
+        <!-- Nacos Discovery（让网关通过 Nacos 发现所有下游服务） -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+
+        <!-- LoadBalancer（Spring Cloud 2021+ 必须显式引入，替代已废弃的 Ribbon） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
         <!-- Resilience4j Circuit Breaker -->

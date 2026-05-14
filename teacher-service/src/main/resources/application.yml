@@ -67,16 +67,3 @@ logging:
     com.alibaba.nacos: WARN # 减少 Nacos 底层刷屏日志，方便本地调试
 
 
-
-# ===================================================================
-# Eureka 注册（让网关通过 Eureka 发现本服务；Nacos Discovery 保留用于微服务间调用）
-# ===================================================================
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    instance-id: ${spring.application.name}:${server.port}
-    prefer-ip-address: true

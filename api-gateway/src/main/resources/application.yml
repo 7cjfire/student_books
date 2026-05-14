@@ -9,6 +9,11 @@ spring:
   #   host: localhost
   #   port: 6379
   cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
     gateway:
       discovery:
         locator:
@@ -163,14 +168,6 @@ spring:
             - Path=/consumer/**
           filters:
             - StripPrefix=1
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-  instance:
-    instance-id: ${spring.application.name}:${server.port}
-    prefer-ip-address: true
 
 resilience4j:
   circuitbreaker:

@@ -30,13 +30,11 @@ mybatis-plus:
       logic-not-delete-value: 0
     banner: false
 
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-  instance:
-    instance-id: ${spring.application.name}:${server.port}
-    prefer-ip-address: true
+# Nacos 服务发现
+spring.cloud.nacos.discovery:
+  server-addr: localhost:8848
+  namespace: online-college
+  group: DEFAULT_GROUP
 
 # OpenFeign 调 file-service 的默认超时
 feign:

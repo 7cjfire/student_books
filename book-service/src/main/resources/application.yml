@@ -32,16 +32,13 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: com.onlinecollege.book.entity
 
-# 服务注册到 Eureka
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    instance-id: ${spring.application.name}:${server.port}
-    prefer-ip-address: true
+# Nacos 服务发现
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
 
 # Swagger / OpenAPI 3
 springdoc:

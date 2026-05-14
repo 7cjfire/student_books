@@ -7,6 +7,13 @@ spring:
   application:
     name: file-service
 
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
+
   servlet:
     multipart:
       max-file-size: 20MB
@@ -68,14 +75,6 @@ oss:
     url-prefix: ${OSS_LOCAL_URL_PREFIX:http://localhost:8086/file-service/local}
 
 # 服务注册
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-  instance:
-    instance-id: ${spring.application.name}:${server.port}
-    prefer-ip-address: true
-
 springdoc:
   api-docs:
     path: /v3/api-docs
