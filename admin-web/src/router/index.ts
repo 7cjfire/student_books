@@ -67,6 +67,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/home-preview/HomePreviewView.vue'),
         meta: { title: '首页预览', icon: 'HomeFilled' },
       },
+      {
+        path: 'upload',
+        name: 'upload',
+        component: () => import('@/views/upload/UploadView.vue'),
+        meta: { title: '文件上传', icon: 'Upload' },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
