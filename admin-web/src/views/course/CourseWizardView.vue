@@ -35,14 +35,14 @@
                   @change="onFirstChange"
                   style="width: 100%"
                 >
-                  <el-option v-for="s in firstLevel" :key="s.id" :label="s.title" :value="s.id!" />
+                  <el-option v-for="s in firstLevel" :key="s.id" :label="s.title" :value="s.id" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="6">
               <el-form-item prop="subjectId" label="二级分类">
                 <el-select v-model="info.subjectId" placeholder="请选择" style="width: 100%">
-                  <el-option v-for="s in secondLevel" :key="s.id" :label="s.title" :value="s.id!" />
+                  <el-option v-for="s in secondLevel" :key="s.id" :label="s.title" :value="s.id" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -61,7 +61,7 @@
                     v-for="t in teacherOptions"
                     :key="t.id"
                     :label="`${t.teacherName} (${t.title || '讲师'})`"
-                    :value="t.id!"
+                    :value="t.id"
                   />
                 </el-select>
               </el-form-item>
@@ -283,7 +283,7 @@
       <el-form :model="videoDlg.form" label-width="90px">
         <el-form-item label="所属章节" required>
           <el-select v-model="videoDlg.form.chapterId" placeholder="请选择" style="width: 100%">
-            <el-option v-for="ch in chapters" :key="ch.id" :label="ch.title" :value="ch.id!" />
+            <el-option v-for="ch in chapters" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="标题" required>
