@@ -4,47 +4,155 @@ server:
 spring:
   application:
     name: api-gateway
+  # 注意：如果以后启用 RequestRateLimiter（基于 Redis），需要在这里加上：
+  # redis:
+  #   host: localhost
+  #   port: 6379
   cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
     gateway:
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
       routes:
+        # 路由统一规则：用 RewritePath 重写 /api/xxx 到下游服务的 "context-path + Controller@RequestMapping"，
+        # 不能用 StripPrefix=1，因为下游每个服务都有 server.servlet.context-path（如 /book-service）。
+
         # 图书服务路由
+        # 外部 /api/books/page  -> book-service 实例 /book-service/api/books/page
         - id: book-service-route
           uri: lb://book-service
           predicates:
             - Path=/api/books/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/api/books/?(?<segment>.*), /book-service/api/books/$\{segment}
             - name: CircuitBreaker
               args:
                 name: bookServiceCircuitBreaker
                 fallbackUri: forward:/fallback/book-service
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@userKeyResolver}"
-        
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 10
+#                redis-rate-limiter.burstCapacity: 20
+#                key-resolver: "#{@userKeyResolver}"
+
         # 教师服务路由
+        # 外部 /api/teacher/add -> teacher-service 实例 /teacher-service/teacher/add
         - id: teacher-service-route
           uri: lb://teacher-service
           predicates:
             - Path=/api/teacher/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/api/teacher/?(?<segment>.*), /teacher-service/teacher/$\{segment}
             - name: CircuitBreaker
               args:
                 name: teacherServiceCircuitBreaker
                 fallbackUri: forward:/fallback/teacher-service
-            - name: RequestRateLimiter
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 10
+#                redis-rate-limiter.burstCapacity: 20
+#                key-resolver: "#{@userKeyResolver}"
+
+        # 课程分类服务路由
+        # 外部 /api/subjects/tree -> subject-service 实例 /subject-service/api/subjects/tree
+        - id: subject-service-route
+          uri: lb://subject-service
+          predicates:
+            - Path=/api/subjects/**
+          filters:
+            - RewritePath=/api/subjects/?(?<segment>.*), /subject-service/api/subjects/$\{segment}
+            - name: CircuitBreaker
               args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@userKeyResolver}"
-        
+                name: subjectServiceCircuitBreaker
+                fallbackUri: forward:/fallback/subject-service
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 10
+#                redis-rate-limiter.burstCapacity: 20
+#                key-resolver: "#{@userKeyResolver}"
+
+        # 文件服务路由（头像/Excel 上传）
+        # 外部 /api/upload/avatar -> file-service 实例 /file-service/upload/avatar
+        - id: file-service-route
+          uri: lb://file-service
+          predicates:
+            - Path=/api/upload/**
+          filters:
+            - RewritePath=/api/upload/?(?<segment>.*), /file-service/upload/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: fileServiceCircuitBreaker
+                fallbackUri: forward:/fallback/file-service
+            # 注意：文件上传走的是 multipart，这里不挂 RequestRateLimiter 避免对大文件做 body 限速
+
+        # VOD 凭证路由（走 file-service）
+        # 外部 /api/vod/upload-auth -> file-service 实例 /file-service/vod/upload-auth
+        - id: file-service-vod-route
+          uri: lb://file-service
+          predicates:
+            - Path=/api/vod/**
+          filters:
+            - RewritePath=/api/vod/?(?<segment>.*), /file-service/vod/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: fileServiceCircuitBreaker
+                fallbackUri: forward:/fallback/file-service
+
+        # 课程服务路由
+        # 外部 /api/course/courses/page -> course-service 实例 /course-service/courses/page
+        - id: course-service-route
+          uri: lb://course-service
+          predicates:
+            - Path=/api/course/**
+          filters:
+            - RewritePath=/api/course/?(?<segment>.*), /course-service/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: courseServiceCircuitBreaker
+                fallbackUri: forward:/fallback/course-service
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 10
+#                redis-rate-limiter.burstCapacity: 20
+#                key-resolver: "#{@userKeyResolver}"
+
+        # 首页服务路由（banner + 首页聚合）
+        # 外部 /api/index/home -> index-service 实例 /index-service/home
+        - id: index-service-route
+          uri: lb://index-service
+          predicates:
+            - Path=/api/index/**
+          filters:
+            - RewritePath=/api/index/?(?<segment>.*), /index-service/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: indexServiceCircuitBreaker
+                fallbackUri: forward:/fallback/index-service
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 20
+#                redis-rate-limiter.burstCapacity: 40
+#                key-resolver: "#{@userKeyResolver}"
+
+        # 认证服务路由（登录 / 当前用户 / 登出 / ping）
+        # 外部 /api/auth/login -> auth-service 实例 /auth-service/auth/login
+        - id: auth-service-route
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - RewritePath=/api/auth/?(?<segment>.*), /auth-service/auth/$\{segment}
+            - name: CircuitBreaker
+              args:
+                name: authServiceCircuitBreaker
+                fallbackUri: forward:/fallback/auth-service
+
         # 服务提供者路由
         - id: service-provider-route
           uri: lb://service-provider
@@ -52,7 +160,7 @@ spring:
             - Path=/provider/**
           filters:
             - StripPrefix=1
-        
+
         # 服务消费者路由
         - id: service-consumer-route
           uri: lb://service-consumer
@@ -60,14 +168,6 @@ spring:
             - Path=/consumer/**
           filters:
             - StripPrefix=1
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-  instance:
-    instance-id: ${spring.application.name}:${server.port}
-    prefer-ip-address: true
 
 resilience4j:
   circuitbreaker:
@@ -81,6 +181,46 @@ resilience4j:
         failureRateThreshold: 50
         eventConsumerBufferSize: 10
       teacherServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      subjectServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      fileServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      courseServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      indexServiceCircuitBreaker:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      authServiceCircuitBreaker:
         slidingWindowSize: 10
         minimumNumberOfCalls: 5
         permittedNumberOfCallsInHalfOpenState: 3
@@ -104,12 +244,25 @@ resilience4j:
         allowHealthIndicatorToFail: true
         registerHealthIndicator: true
         eventConsumerBufferSize: 100
+      subjectServiceRateLimiter:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0
+        allowHealthIndicatorToFail: true
+        registerHealthIndicator: true
+        eventConsumerBufferSize: 100
+
+# JWT 校验配置：secret 必须与 auth-service 一致，生产环境用 JWT_SECRET 环境变量覆盖
+jwt:
+  secret: ${JWT_SECRET:online-college-super-secret-key-please-change-in-prod-2026}
+  issuer: online-college
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,circuitbreakers,ratelimiters,gatway
+        # 修正原先的拼写错误 gatway -> gateway
+        include: health,info,metrics,circuitbreakers,ratelimiters,gateway
   endpoint:
     health:
       show-details: always

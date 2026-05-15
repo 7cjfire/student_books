@@ -2,172 +2,168 @@ package com.onlinecollege.subject.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.onlinecollege.common.exception.BusinessException;
 import com.onlinecollege.subject.entity.EduSubject;
 import com.onlinecollege.subject.mapper.SubjectMapper;
 import com.onlinecollege.subject.service.SubjectService;
 import com.onlinecollege.subject.vo.SubjectTreeVo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 课程分类服务实现类
  */
+@Slf4j
 @Service
 public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, EduSubject> implements SubjectService {
-    
+
     @Override
     public boolean addSubject(EduSubject subject) {
-        // 验证必填字段
         if (!StringUtils.hasText(subject.getTitle())) {
-            throw new IllegalArgumentException("分类名称不能为空");
+            throw BusinessException.badRequest("分类名称不能为空");
         }
-        
+
         // 设置默认值
         if (subject.getParentId() == null) {
-            subject.setParentId(0L); // 默认为一级分类
+            subject.setParentId(0L);
         }
         if (subject.getSort() == null) {
             subject.setSort(0);
         }
-        
+
+        // 二级分类时，校验父节点存在
+        if (subject.getParentId() != 0L && this.getById(subject.getParentId()) == null) {
+            throw BusinessException.badRequest("父分类不存在，parentId: " + subject.getParentId());
+        }
+
         return this.save(subject);
     }
-    
+
     @Override
     public boolean deleteSubjectById(Long id) {
-        // 检查分类是否存在
         EduSubject subject = this.getById(id);
         if (subject == null) {
-            throw new IllegalArgumentException("分类不存在，ID: " + id);
+            throw BusinessException.notFound("分类不存在，ID: " + id);
         }
-        
+
         // 检查是否有子分类
-        LambdaQueryWrapper<EduSubject> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(EduSubject::getParentId, id);
+        LambdaQueryWrapper<EduSubject> queryWrapper = new LambdaQueryWrapper<EduSubject>()
+                .eq(EduSubject::getParentId, id);
         long childCount = this.count(queryWrapper);
         if (childCount > 0) {
-            throw new IllegalArgumentException("该分类下有子分类，无法删除");
+            throw BusinessException.conflict("该分类下有 " + childCount + " 个子分类，无法删除");
         }
-        
+
         return this.removeById(id);
     }
-    
+
     @Override
     public boolean updateSubjectById(EduSubject subject) {
         if (subject.getId() == null) {
-            throw new IllegalArgumentException("分类ID不能为空");
+            throw BusinessException.badRequest("分类ID不能为空");
         }
-        
-        // 检查分类是否存在
-        EduSubject existingSubject = this.getById(subject.getId());
-        if (existingSubject == null) {
-            throw new IllegalArgumentException("分类不存在，ID: " + subject.getId());
+        if (this.getById(subject.getId()) == null) {
+            throw BusinessException.notFound("分类不存在，ID: " + subject.getId());
         }
-        
-        // 验证必填字段
         if (!StringUtils.hasText(subject.getTitle())) {
-            throw new IllegalArgumentException("分类名称不能为空");
+            throw BusinessException.badRequest("分类名称不能为空");
         }
-        
         return this.updateById(subject);
     }
-    
+
     @Override
     public EduSubject getSubjectById(Long id) {
         EduSubject subject = this.getById(id);
         if (subject == null) {
-            throw new IllegalArgumentException("分类不存在，ID: " + id);
+            throw BusinessException.notFound("分类不存在，ID: " + id);
         }
         return subject;
     }
-    
+
     @Override
     public List<EduSubject> getFirstLevelSubjects() {
-        LambdaQueryWrapper<EduSubject> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(EduSubject::getParentId, 0);
-        queryWrapper.orderByAsc(EduSubject::getSort);
+        LambdaQueryWrapper<EduSubject> queryWrapper = new LambdaQueryWrapper<EduSubject>()
+                .eq(EduSubject::getParentId, 0)
+                .orderByAsc(EduSubject::getSort);
         return this.list(queryWrapper);
     }
-    
+
     @Override
     public List<EduSubject> getSubjectsByParentId(Long parentId) {
-        LambdaQueryWrapper<EduSubject> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(EduSubject::getParentId, parentId);
-        queryWrapper.orderByAsc(EduSubject::getSort);
+        if (parentId == null) {
+            throw BusinessException.badRequest("父分类ID不能为空");
+        }
+        LambdaQueryWrapper<EduSubject> queryWrapper = new LambdaQueryWrapper<EduSubject>()
+                .eq(EduSubject::getParentId, parentId)
+                .orderByAsc(EduSubject::getSort);
         return this.list(queryWrapper);
     }
-    
+
     @Override
     public List<SubjectTreeVo> getSubjectTree() {
-        // 查询所有分类
         List<EduSubject> allSubjects = this.list();
-        
-        // 构建ID到VO的映射
-        Map<Long, SubjectTreeVo> voMap = new HashMap<>();
+
+        Map<Long, SubjectTreeVo> voMap = new HashMap<>(allSubjects.size() * 2);
         for (EduSubject subject : allSubjects) {
-            SubjectTreeVo vo = SubjectTreeVo.fromEntity(subject);
-            voMap.put(subject.getId(), vo);
+            voMap.put(subject.getId(), SubjectTreeVo.fromEntity(subject));
         }
-        
-        // 构建树形结构
+
         List<SubjectTreeVo> tree = new ArrayList<>();
         for (SubjectTreeVo vo : voMap.values()) {
-            if (vo.getParentId() == 0) {
-                // 一级分类
+            if (vo.getParentId() == null || vo.getParentId() == 0L) {
                 tree.add(vo);
             } else {
-                // 子分类，添加到父分类的children中
                 SubjectTreeVo parentVo = voMap.get(vo.getParentId());
                 if (parentVo != null) {
                     if (parentVo.getChildren() == null) {
                         parentVo.setChildren(new ArrayList<>());
                     }
                     parentVo.getChildren().add(vo);
+                } else {
+                    // 父节点缺失（数据不一致），作为顶层展示并记日志
+                    log.warn("分类 id={} 的父节点 parentId={} 不存在，作为顶层展示", vo.getId(), vo.getParentId());
+                    tree.add(vo);
                 }
             }
         }
-        
-        // 对树进行排序
-        tree.sort((a, b) -> a.getSort() - b.getSort());
+
+        Comparator<SubjectTreeVo> bySort = Comparator.comparingInt(v -> v.getSort() == null ? 0 : v.getSort());
+        tree.sort(bySort);
         for (SubjectTreeVo vo : voMap.values()) {
             if (vo.getChildren() != null) {
-                vo.getChildren().sort((a, b) -> a.getSort() - b.getSort());
+                vo.getChildren().sort(bySort);
             }
         }
-        
         return tree;
     }
-    
+
     @Override
     public List<EduSubject> getSubjectPath(Long id) {
-        List<EduSubject> path = new ArrayList<>();
         EduSubject current = this.getById(id);
-        
         if (current == null) {
-            throw new IllegalArgumentException("分类不存在，ID: " + id);
+            throw BusinessException.notFound("分类不存在，ID: " + id);
         }
-        
-        // 添加当前分类
+
+        List<EduSubject> path = new ArrayList<>();
         path.add(current);
-        
-        // 递归添加父分类
-        while (current.getParentId() != null && current.getParentId() != 0) {
-            current = this.getById(current.getParentId());
-            if (current != null) {
-                path.add(0, current); // 添加到列表开头
-            } else {
+
+        // 防御性：最多向上追 10 层，避免数据异常导致死循环
+        int guard = 10;
+        while (current.getParentId() != null && current.getParentId() != 0L && guard-- > 0) {
+            EduSubject parent = this.getById(current.getParentId());
+            if (parent == null) {
                 break;
             }
+            path.add(0, parent);
+            current = parent;
         }
-        
         return path;
     }
 }

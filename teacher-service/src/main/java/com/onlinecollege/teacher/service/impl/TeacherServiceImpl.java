@@ -3,115 +3,101 @@ package com.onlinecollege.teacher.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.onlinecollege.common.exception.BusinessException;
 import com.onlinecollege.teacher.entity.Teacher;
 import com.onlinecollege.teacher.mapper.TeacherMapper;
 import com.onlinecollege.teacher.service.TeacherService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 教师服务实现类
+ *
+ * <p>业务校验一律抛 {@link BusinessException}，由 {@code GlobalExceptionHandler}
+ * 统一转为 {@code Result<Void>}；基础字段校验（非空 / 长度 / 格式等）放在
+ * {@link Teacher} 实体的 Bean Validation 注解上，由 {@code @Valid} 触发。
  */
+@Slf4j
 @Service
 public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> implements TeacherService {
-    
+
+    private static final int DEFAULT_PAGE_NUM = 1;
+    private static final int DEFAULT_PAGE_SIZE = 10;
+    private static final int MAX_PAGE_SIZE = 100;
+
     @Override
     public boolean addTeacher(Teacher teacher) {
-        // 验证必填字段
-        if (!StringUtils.hasText(teacher.getTeacherName())) {
-            throw new IllegalArgumentException("教师姓名不能为空");
-        }
-        if (!StringUtils.hasText(teacher.getTeacherNo())) {
-            throw new IllegalArgumentException("教师工号不能为空");
-        }
-        
-        // 设置默认值
+        // id 由 DB 自增，清理掉前端传入的值
+        teacher.setId(null);
         if (teacher.getStatus() == null) {
-            teacher.setStatus(1); // 默认状态为启用
+            teacher.setStatus(1);
         }
-        teacher.setCreateTime(LocalDate.now());
-        teacher.setUpdateTime(LocalDate.now());
-        
+        // createTime / updateTime 由 MetaObjectHandler 自动填充
         return this.save(teacher);
     }
-    
+
     @Override
     public boolean deleteTeacherById(Long id) {
-        // 检查教师是否存在
-        Teacher teacher = this.getById(id);
-        if (teacher == null) {
-            throw new IllegalArgumentException("教师不存在，ID: " + id);
+        if (id == null) {
+            throw BusinessException.badRequest("教师 ID 不能为空");
         }
-        
+        if (this.getById(id) == null) {
+            throw BusinessException.notFound("教师不存在，ID: " + id);
+        }
         return this.removeById(id);
     }
-    
+
     @Override
     public boolean updateTeacherById(Teacher teacher) {
         if (teacher.getId() == null) {
-            throw new IllegalArgumentException("教师ID不能为空");
+            throw BusinessException.badRequest("教师 ID 不能为空");
         }
-        
-        // 检查教师是否存在
-        Teacher existingTeacher = this.getById(teacher.getId());
-        if (existingTeacher == null) {
-            throw new IllegalArgumentException("教师不存在，ID: " + teacher.getId());
+        if (this.getById(teacher.getId()) == null) {
+            throw BusinessException.notFound("教师不存在，ID: " + teacher.getId());
         }
-        
-        // 验证必填字段
-        if (!StringUtils.hasText(teacher.getTeacherName())) {
-            throw new IllegalArgumentException("教师姓名不能为空");
-        }
-        if (!StringUtils.hasText(teacher.getTeacherNo())) {
-            throw new IllegalArgumentException("教师工号不能为空");
-        }
-        
-        teacher.setUpdateTime(LocalDate.now());
+        // 防御性：createTime 不允许被更新接口覆盖
+        teacher.setCreateTime(null);
         return this.updateById(teacher);
     }
-    
+
     @Override
     public Teacher getTeacherById(Long id) {
+        if (id == null) {
+            throw BusinessException.badRequest("教师 ID 不能为空");
+        }
         Teacher teacher = this.getById(id);
         if (teacher == null) {
-            throw new IllegalArgumentException("教师不存在，ID: " + id);
+            throw BusinessException.notFound("教师不存在，ID: " + id);
         }
         return teacher;
     }
-    
+
     @Override
     public Page<Teacher> getTeacherPage(Integer pageNum, Integer pageSize) {
-        // 设置默认值
-        if (pageNum == null || pageNum < 1) {
-            pageNum = 1;
+        int safePageNum = (pageNum == null || pageNum < 1) ? DEFAULT_PAGE_NUM : pageNum;
+        int safePageSize = (pageSize == null || pageSize < 1) ? DEFAULT_PAGE_SIZE : pageSize;
+        if (safePageSize > MAX_PAGE_SIZE) {
+            safePageSize = MAX_PAGE_SIZE;
         }
-        if (pageSize == null || pageSize < 1) {
-            pageSize = 10;
-        }
-        
-        Page<Teacher> page = new Page<>(pageNum, pageSize);
-        return this.page(page);
+        Page<Teacher> page = new Page<>(safePageNum, safePageSize);
+        LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<Teacher>()
+                .orderByDesc(Teacher::getId);
+        return this.page(page, wrapper);
     }
-    
+
     @Override
     public List<Teacher> getTeacherList(String teacherName, String department) {
-        LambdaQueryWrapper<Teacher> queryWrapper = new LambdaQueryWrapper<>();
-        
-        // 按教师姓名模糊查询
+        LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(teacherName)) {
-            queryWrapper.like(Teacher::getTeacherName, teacherName);
+            wrapper.like(Teacher::getTeacherName, teacherName);
         }
-        
-        // 按所属院系精确查询
         if (StringUtils.hasText(department)) {
-            queryWrapper.eq(Teacher::getDepartment, department);
+            wrapper.eq(Teacher::getDepartment, department);
         }
-        
-        // 按创建时间倒序排列
-        queryWrapper.orderByDesc(Teacher::getCreateTime);
-        
-        return this.list(queryWrapper);
+        wrapper.orderByDesc(Teacher::getCreateTime);
+        return this.list(wrapper);
     }
 }

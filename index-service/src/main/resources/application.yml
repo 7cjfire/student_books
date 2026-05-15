@@ -1,0 +1,84 @@
+server:
+  port: 9091
+  servlet:
+    context-path: /index-service
+
+spring:
+  application:
+    name: index-service
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/online_college?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    database: ${REDIS_DB:0}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 16
+        max-idle: 8
+        min-idle: 2
+        max-wait: 1000ms
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+    banner: false
+
+# 首页缓存配置
+index:
+  cache:
+    # key 前缀
+    key-prefix: "index:"
+    # 首页缓存过期时间（秒）
+    home-ttl-seconds: 300
+    # banner 列表缓存过期（秒）
+    banner-ttl-seconds: 600
+    # 开关：false 时所有查询直穿 DB（方便本地调试）
+    enabled: true
+
+# Nacos 服务发现
+spring.cloud.nacos.discovery:
+  server-addr: localhost:8848
+  namespace: online-college
+  group: DEFAULT_GROUP
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  packages-to-scan: com.onlinecollege.index.controller
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.onlinecollege.index: debug
+    org.springframework.data.redis: info

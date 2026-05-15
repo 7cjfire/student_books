@@ -1,30 +1,56 @@
+# ===================================================================
+# 基础环境配置
+# ===================================================================
+spring:
+  application:
+    name: teacher-service
+  profiles:
+    active: dev
+
+  # 关键配置：从 Spring Boot 2.4+ 开始，必须显式导入 Nacos 配置
+  config:
+    import:
+      - optional:nacos:teacher-service-config.yaml  # 显式引入主配置
+      - optional:nacos:datasource-config.yaml       # 引入数据源配置
+      - optional:nacos:common-config.yaml           # 引入公共配置
+
+  # ===================================================================
+  # Nacos 核心配置（连接 Nacos 服务器的最小化信息）
+  # ===================================================================
+  cloud:
+    nacos:
+      # 服务发现（注册中心）
+      discovery:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
+      # 配置中心
+      config:
+        server-addr: localhost:8848
+        namespace: online-college
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        # 共享配置（在 import 里写了，这里作为补充定义自动刷新）
+        shared-configs:
+          - data-id: common-config.yaml
+            refresh: true
+          - data-id: datasource-config.yaml
+            refresh: true
+        # 扩展配置
+        extension-configs:
+          - data-id: teacher-service-config.yaml
+            refresh: true
+
+# ===================================================================
+# 本地兜底配置（仅当 Nacos 不可用或 Nacos 中未定义对应属性时生效）
+# 正常启动时以下内容全部由 Nacos 中的配置文件覆盖
+# ===================================================================
 server:
   port: 8084
   servlet:
     context-path: /teacher-service
 
-spring:
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/online_college?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
-  
-  jackson:
-    date-format: yyyy-MM-dd
-    time-zone: GMT+8
-
-mybatis-plus:
-  configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-    map-underscore-to-camel-case: true
-  global-config:
-    db-config:
-      id-type: auto
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
-
+# SpringDoc / Swagger 配置
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -33,37 +59,11 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
 
-resilience4j:
-  circuitbreaker:
-    instances:
-      teacherService:
-        slidingWindowSize: 10
-        minimumNumberOfCalls: 5
-        permittedNumberOfCallsInHalfOpenState: 3
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-        waitDurationInOpenState: 5s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
-  ratelimiter:
-    instances:
-      teacherService:
-        limitForPeriod: 10
-        limitRefreshPeriod: 1s
-        timeoutDuration: 0
-        allowHealthIndicatorToFail: true
-        registerHealthIndicator: true
-        eventConsumerBufferSize: 100
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,circuitbreakers,ratelimiters
-  endpoint:
-    health:
-      show-details: always
-
+# 日志配置
 logging:
   level:
     com.onlinecollege.teacher: debug
     org.springframework.web: info
+    com.alibaba.nacos: WARN # 减少 Nacos 底层刷屏日志，方便本地调试
+
+

@@ -1,0 +1,83 @@
+### 在线学院 - 接口联调脚本（IntelliJ / VSCode REST Client 都支持）
+###
+### 用法：
+###   1) 先执行 [1. 登录] 那一段，会自动把返回的 token 存到环境变量 {{authToken}}
+###   2) 然后任意有 Authorization 头的请求都会自动带上 Bearer token
+###
+### 如果你的 api-gateway 端口不是 8080，改下面的 @gateway 即可。
+
+@gateway = http://localhost:8080
+
+###############################################
+# 0. 网关连通性自检（无需鉴权）
+###############################################
+
+### ping auth-service via gateway
+GET {{gateway}}/api/auth/ping
+
+###############################################
+# 1. 登录拿 token  ← 一定要先跑这一条
+###############################################
+
+### login
+# @name login
+POST {{gateway}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### 把上一步返回的 token 提取到变量（IntelliJ HTTP Client 语法）
+@authToken = {{login.response.body.data.token}}
+
+
+###############################################
+# 2. 业务接口（带鉴权）
+###############################################
+
+### 当前登录用户
+GET {{gateway}}/api/auth/me
+Authorization: Bearer {{authToken}}
+
+### 新增教师
+POST {{gateway}}/api/teacher/add
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "teacherName": "张4",
+  "teacherNo": "T2023001",
+  "gender": "男",
+  "age": 35,
+  "title": "教授",
+  "department": "计算机学院",
+  "phone": "13800138000",
+  "email": "zhangsan@example.com",
+  "hireDate": "2023-01-01",
+  "salary": 15000,
+  "status": 1
+}
+
+### 教师列表
+GET {{gateway}}/api/teacher/list?pageNum=1&pageSize=10
+Authorization: Bearer {{authToken}}
+
+### 删除教师 (id=3)
+DELETE {{gateway}}/api/teacher/delete/3
+Authorization: Bearer {{authToken}}
+
+
+###############################################
+# 3. 公开接口（不需要 token, 验白名单）
+###############################################
+
+### 课程分类树
+GET {{gateway}}/api/subjects/tree
+
+### 图书分页
+GET {{gateway}}/api/books/page?pageNum=1&pageSize=10
+
+### 首页聚合
+GET {{gateway}}/api/index/home
