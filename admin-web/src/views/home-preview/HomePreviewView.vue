@@ -26,13 +26,46 @@
       <el-col :span="12">
         <el-card v-loading="loading" shadow="never">
           <template #header><span>热门课程</span></template>
-          <course-list :items="data?.hotCourses || []" empty="暂无热门课程" />
+          <ul v-if="data?.hotCourses?.length" class="course-ul">
+            <li v-for="c in data.hotCourses" :key="c.id" class="course-item">
+              <span class="title">{{ c.title }}</span>
+              <span class="meta">
+                <span>{{ c.lessonNum ?? 0 }} 节</span>
+                <span class="sep">·</span>
+                <span>{{ c.viewCount ?? 0 }} 人</span>
+                <span class="sep">·</span>
+                <span class="price">¥{{ c.price ?? 0 }}</span>
+              </span>
+            </li>
+          </ul>
+          <div v-else class="empty">暂无热门课程</div>
         </el-card>
       </el-col>
       <el-col :span="12">
         <el-card v-loading="loading" shadow="never">
           <template #header><span>最新课程</span></template>
-          <course-list :items="data?.latestCourses || []" empty="暂无最新课程" />
+          <ul v-if="data?.latestCourses?.length" class="course-ul">
+            <li v-for="c in data.latestCourses" :key="c.id" class="course-item">
+              <span class="title">{{ c.title }}</span>
+              <span class="meta">
+                <span>{{ c.lessonNum ?? 0 }} 节</span>
+                <span class="sep">·</span>
+                <span>{{ c.viewCount ?? 0 }} 人</span>
+                <span class="sep">·</span>
+                <span class="price">¥{{ c.price ?? 0 }}</span>
+                <el-button
+                  size="small"
+                  type="primary"
+                  text
+                  style="margin-left: 8px"
+                  @click="openCourseDetail(c)"
+                >
+                  详情/播放
+                </el-button>
+              </span>
+            </li>
+          </ul>
+          <div v-else class="empty">暂无最新课程</div>
         </el-card>
       </el-col>
     </el-row>
@@ -57,14 +90,56 @@
         <el-empty v-if="!data?.recommendedTeachers?.length" description="暂无推荐讲师" :image-size="60" />
       </el-space>
     </el-card>
+
+    <!-- 课程详情弹窗（含章节列表 + 播放按钮） -->
+    <el-dialog v-model="detailVisible" :title="detailCourse?.title || '课程详情'" width="700px">
+      <div v-if="detailLoading" style="text-align: center; padding: 30px">
+        <el-icon class="is-loading" :size="24"><Loading /></el-icon>
+        <span style="margin-left: 8px">加载中...</span>
+      </div>
+      <div v-else-if="detailData">
+        <el-descriptions :column="2" border size="small" style="margin-bottom: 16px">
+          <el-descriptions-item label="课程标题">{{ detailData.course.title }}</el-descriptions-item>
+          <el-descriptions-item label="价格">¥{{ detailData.course.price ?? 0 }}</el-descriptions-item>
+          <el-descriptions-item label="小节数">{{ detailData.course.lessonNum ?? 0 }}</el-descriptions-item>
+          <el-descriptions-item label="浏览量">{{ detailData.course.viewCount ?? 0 }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div v-for="ch in detailData.chapters" :key="ch.id" style="margin-bottom: 12px">
+          <h4 style="margin: 0 0 6px">{{ ch.title }}</h4>
+          <el-table :data="ch.videos" border size="small">
+            <el-table-column prop="title" label="小节" />
+            <el-table-column label="视频" width="200">
+              <template #default="{ row }">
+                <el-button
+                  v-if="row.videoId"
+                  size="small"
+                  type="success"
+                  @click="playVideoId = row.videoId; showPlayer = true"
+                >
+                  播放
+                </el-button>
+                <el-tag v-else type="info" size="small">无视频</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-if="!detailData.chapters?.length" class="empty">暂无章节</div>
+      </div>
+    </el-dialog>
+
+    <!-- 视频播放器 -->
+    <VideoPlayer v-model="showPlayer" :video-id="playVideoId" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, defineComponent, h, PropType } from 'vue'
+import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh, Delete } from '@element-plus/icons-vue'
+import { Refresh, Delete, Loading } from '@element-plus/icons-vue'
 import { indexApi, HomeData, HomeCourseItem } from '@/api/index-api'
+import { courseApi, CourseDetail } from '@/api/course'
+import VideoPlayer from '@/components/VideoPlayer.vue'
 
 const data = ref<HomeData | null>(null)
 const loading = ref(false)
@@ -85,34 +160,29 @@ async function evict() {
   load()
 }
 
-// 简单的内联组件：课程列表
-const CourseList = defineComponent({
-  props: {
-    items: { type: Array as PropType<HomeCourseItem[]>, default: () => [] },
-    empty: { type: String, default: '暂无数据' },
-  },
-  setup(props) {
-    return () =>
-      props.items.length
-        ? h(
-            'ul',
-            { class: 'course-ul' },
-            props.items.map((c) =>
-              h('li', { key: c.id, class: 'course-item' }, [
-                h('span', { class: 'title' }, c.title),
-                h('span', { class: 'meta' }, [
-                  h('span', {}, `${c.lessonNum ?? 0} 节`),
-                  h('span', { class: 'sep' }, '·'),
-                  h('span', {}, `${c.viewCount ?? 0} 人`),
-                  h('span', { class: 'sep' }, '·'),
-                  h('span', { class: 'price' }, `¥${c.price ?? 0}`),
-                ]),
-              ])
-            )
-          )
-        : h('div', { class: 'empty' }, props.empty)
-  },
-})
+// 课程详情弹窗
+const detailVisible = ref(false)
+const detailLoading = ref(false)
+const detailCourse = ref<HomeCourseItem | null>(null)
+const detailData = ref<CourseDetail | null>(null)
+
+async function openCourseDetail(course: HomeCourseItem) {
+  detailCourse.value = course
+  detailVisible.value = true
+  detailLoading.value = true
+  detailData.value = null
+  try {
+    detailData.value = await courseApi.detail(course.id as number)
+  } catch {
+    /* 已由拦截器弹错 */
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+// 视频播放
+const showPlayer = ref(false)
+const playVideoId = ref('')
 </script>
 
 <style scoped lang="scss">
@@ -142,12 +212,12 @@ const CourseList = defineComponent({
   }
 }
 
-:deep(.course-ul) {
+.course-ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
-:deep(.course-item) {
+.course-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -159,6 +229,8 @@ const CourseList = defineComponent({
   .meta {
     font-size: 12px;
     color: #909399;
+    display: inline-flex;
+    align-items: center;
     .sep {
       margin: 0 6px;
     }
@@ -167,7 +239,7 @@ const CourseList = defineComponent({
     }
   }
 }
-:deep(.empty) {
+.empty {
   color: #c0c4cc;
   text-align: center;
   padding: 16px 0;
